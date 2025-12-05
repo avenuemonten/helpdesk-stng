@@ -1,4 +1,3 @@
-// src/components/layout/MainLayout.jsx
 import { useState } from "react";
 import Sidebar from "./Sidebar.jsx";
 import TicketList from "../tickets/TicketList.jsx";
@@ -7,6 +6,7 @@ import CreateTicketModal from "../modals/CreateTicketModal.jsx";
 import AdminPanel from "../admin/AdminPanel.jsx";
 import AdminUsers from "../admin/AdminUsers.jsx";
 import Dashboard from "../dashboard/Dashboard.jsx"; // твой жирный дашборд
+import ProfilePage from "../profile/ProfilePage.jsx"; // профиль пользователя
 
 // Стартовые тикеты
 const initialTickets = [
@@ -56,14 +56,14 @@ const initialCategories = [
   },
 ];
 
-export default function MainLayout() {
+export default function MainLayout({ currentUser, onLogout }) {
   const isAdmin = true; // потом возьмём из auth / роли
 
   const [tickets, setTickets] = useState(initialTickets);
   const [selectedTicketId, setSelectedTicketId] = useState(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
-  // "dashboard" | "tickets" | "users" | "admin"
+  // "dashboard" | "tickets" | "users" | "admin" | "profile"
   const [activeSection, setActiveSection] = useState("dashboard");
 
   const [categories, setCategories] = useState(initialCategories);
@@ -170,6 +170,8 @@ export default function MainLayout() {
         isAdmin={isAdmin}
         activeSection={activeSection}
         onSectionChange={setActiveSection}
+        currentUser={currentUser}
+        onLogout={onLogout}
       />
 
       {/* Правая часть */}
@@ -217,6 +219,17 @@ export default function MainLayout() {
                 </h1>
                 <p className="text-sm text-[var(--text-muted)]">
                   Управление категориями и структурой тикетов
+                </p>
+              </>
+            )}
+
+            {activeSection === "profile" && (
+              <>
+                <h1 className="text-2xl font-semibold tracking-tight">
+                  Профиль пользователя
+                </h1>
+                <p className="text-sm text-[var(--text-muted)]">
+                  Личные данные, роли и мои тикеты
                 </p>
               </>
             )}
@@ -301,6 +314,12 @@ export default function MainLayout() {
               onUpdateCategory={handleUpdateCategory}
               onDeleteCategory={handleDeleteCategory}
             />
+          )}
+
+          {activeSection === "profile" && (
+            <div className="w-full h-full min-h-0">
+              <ProfilePage />
+            </div>
           )}
         </section>
 

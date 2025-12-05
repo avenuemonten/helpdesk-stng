@@ -4,8 +4,20 @@ import React from "react";
 export default function Sidebar({
   activeSection = "dashboard",
   onSectionChange,
-  isAdmin = true, // пока просто флаг, вдруг пригодится дальше
+  isAdmin = true,
+  currentUser,
+  onLogout,
 }) {
+  const initials = getInitials(
+    currentUser?.fullname || currentUser?.username || "Пользователь"
+  );
+
+  const line2 = currentUser
+    ? `${currentUser.department || "Без отдела"} / ${
+        currentUser.computerName || "Без ПК"
+      }`
+    : "Не авторизован";
+
   return (
     <aside className="w-60 h-full bg-[#f8fafc] border-r border-[var(--border-subtle)] flex flex-col">
       {/* Логотип / заголовок слева */}
@@ -42,30 +54,44 @@ export default function Sidebar({
             onClick={() => onSectionChange?.("admin")}
           />
         )}
+        <SidebarItem
+          label="Профиль"
+          active={activeSection === "profile"}
+          onClick={() => onSectionChange?.("profile")}
+        />
       </nav>
 
-      {/* Юзер-карточка снизу (как в Discord) */}
+      {/* Юзер-карточка снизу */}
       <div className="mt-auto px-3 py-3 border-t border-[var(--border-subtle)]">
-        <button className="w-full flex items-center justify-between gap-3 rounded-xl bg-white hover:bg-slate-50 border border-[var(--border-subtle)] px-3 py-2 text-left transition-colors">
-          <div className="flex items-center gap-2">
+        <div className="w-full flex items-center justify-between gap-3 rounded-xl bg-white border border-[var(--border-subtle)] px-3 py-2">
+          <button
+            type="button"
+            onClick={() => onSectionChange?.("profile")}
+            className="flex items-center gap-2 text-left flex-1"
+          >
             <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center text-[11px] font-semibold">
-              ЗД
+              {initials}
             </div>
             <div className="flex flex-col">
               <span className="text-xs font-semibold leading-tight">
-                Заболоцкий Д. С.
+                {currentUser?.fullname || currentUser?.username || "Пользователь"}
               </span>
               <span className="text-[10px] text-[var(--text-muted)] leading-tight">
-                Admin / IT Support
+                {line2}
               </span>
             </div>
-          </div>
+          </button>
 
           {/* Иконка выхода */}
-          <div className="w-7 h-7 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:bg-red-50 hover:text-red-500 transition-colors">
+          <button
+            type="button"
+            onClick={onLogout}
+            className="w-7 h-7 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:bg-red-50 hover:text-red-500 transition-colors"
+            title="Выйти"
+          >
             ⏏
-          </div>
-        </button>
+          </button>
+        </div>
       </div>
     </aside>
   );
@@ -84,5 +110,15 @@ function SidebarItem({ label, active, onClick }) {
     >
       {label}
     </button>
+  );
+}
+
+function getInitials(name = "") {
+  const parts = name.trim().split(/\s+/);
+  if (!parts.length) return "ЮЗ";
+  if (parts.length === 1) return parts[0][0]?.toUpperCase() || "ЮЗ";
+  return (
+    (parts[0][0] || "").toUpperCase() +
+    (parts[parts.length - 1][0] || "").toUpperCase()
   );
 }
