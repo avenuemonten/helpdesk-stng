@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* CSS-переменные для темы */
+:root {
+  --bg: #f5f5f5;
+  --bg-card: #ffffff;
+  --bg-sidebar: #ffffff;
+  --border-subtle: #e5e7eb;
+  --text-main: #111827;
+  --text-muted: #6b7280;
+  --accent: #111827;
+
+  /* Чтобы var(--text) тоже работал, как мы используем в компонентах */
+  --text: #111827;
+}
+
+/* ВАЖНО: фиксируем высоту приложения */
+html,
+body,
+#root {
+  height: 100%;
+}
+
+/* Тоже важно: внешний скролл убираем, скролл только внутри layout/чата */
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+    "Segoe UI", sans-serif;
+  background-color: var(--bg);
+  color: var(--text-main);
+  overflow: hidden; /* 👈 чтобы страница не тянулась вниз, а скроллился только контент внутри */
+}
+
+/* Простые скроллбары */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background: #d1d5db;
+}
