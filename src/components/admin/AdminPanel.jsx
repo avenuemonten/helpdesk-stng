@@ -57,7 +57,7 @@ export default function AdminPanel({
         <h2 className="text-sm font-semibold mb-1">Категории тикетов</h2>
         <p className="text-xs text-[var(--text-muted)] mb-3">
           Здесь администратор задаёт список категорий, которые будут доступны
-          пользователям при создании тикета. Меньше каши — быстрее поддержка.
+          пользователям при создании тикета.
         </p>
 
         <form
@@ -147,9 +147,7 @@ export default function AdminPanel({
                             type="text"
                             className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg)] px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-slate-900"
                             value={editDescription}
-                            onChange={(e) =>
-                              setEditDescription(e.target.value)
-                            }
+                            onChange={(e) => setEditDescription(e.target.value)}
                           />
                         </td>
                         <td className="px-4 py-2 align-top text-[11px] text-[var(--text-muted)]">

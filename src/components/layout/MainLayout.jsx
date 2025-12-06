@@ -9,7 +9,7 @@ import Dashboard from "../dashboard/Dashboard.jsx";
 import ProfilePage from "../profile/ProfilePage.jsx";
 
 export default function MainLayout({ currentUser, onLogout }) {
-  const role = currentUser?.role || "user"; // user | support | admin
+  const role = "user"; // ТЕСТ РОЛИ: 'user' | 'support' | 'admin'
   const isAdmin = role === "admin";
   const isSupport = role === "support";
   const isUser = role === "user";
@@ -37,8 +37,27 @@ export default function MainLayout({ currentUser, onLogout }) {
     },
   ]);
 
+  const [categories, setCategories] = useState([
+    {
+      id: 1,
+      name: "1C и Бухгалтерия",
+      description: "Вопросы по 1С, бухгалтерии, расчетам",
+    },
+    {
+      id: 2,
+      name: "VPN / удаленный доступ",
+      description: "Удаленная работа, подключение извне офиса",
+    },
+    {
+      id: 3,
+      name: "Рабочее место",
+      description: "ПК, принтеры, офисные приложения, рабочее место"
+    },
+  ]);
+
+  // user и support стартуют с тикетов, admin — с дашборда
   const [activeSection, setActiveSection] = useState(
-    isUser ? "tickets" : "dashboard"
+    isAdmin ? "dashboard" : "tickets"
   );
   const [selectedTicketId, setSelectedTicketId] = useState(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -46,6 +65,7 @@ export default function MainLayout({ currentUser, onLogout }) {
   const selectedTicket =
     tickets.find((t) => t.id === selectedTicketId) || null;
 
+  // ====== TICKET HANDLERS ======
   function handleSelectTicket(id) {
     setSelectedTicketId(id);
   }
@@ -90,12 +110,52 @@ export default function MainLayout({ currentUser, onLogout }) {
     if (selectedTicketId === id) setSelectedTicketId(null);
   }
 
+  // ====== CATEGORY HANDLERS ======
+  function handleAddCategory(name, description) {
+    const trimmedName = name.trim();
+    if (!trimmedName) return;
+
+    const nextId = categories.length
+      ? Math.max(...categories.map((c) => c.id)) + 1
+      : 1;
+
+    const newCategory = {
+      id: nextId,
+      name: trimmedName,
+      description: description.trim(),
+    };
+
+    setCategories((prev) => [...prev, newCategory]);
+  }
+
+  function handleUpdateCategory(id, name, description) {
+    setCategories((prev) =>
+      prev.map((c) =>
+        c.id === id
+          ? {
+              ...c,
+              name: name.trim(),
+              description: description.trim(),
+            }
+          : c
+      )
+    );
+  }
+
+  function handleDeleteCategory(id) {
+    setCategories((prev) => prev.filter((c) => c.id !== id));
+  }
+
+  // ====== RENDER LOGIC ======
+  const showCreateTicketButton = activeSection === "tickets" && isUser;
+  const showDashboard = isAdmin && activeSection === "dashboard";
+  const showUsers = (isSupport || isAdmin) && activeSection === "users";
+  const showAdminPanel = (isSupport || isAdmin) && activeSection === "admin";
+  const showProfile = isUser && activeSection === "profile";
+
   return (
     <div className="h-screen flex bg-[var(--bg)] overflow-hidden">
       <Sidebar
-        isAdmin={isAdmin}
-        isSupport={isSupport}
-        isUser={isUser}
         activeSection={activeSection}
         onSectionChange={setActiveSection}
         currentUser={currentUser}
@@ -109,45 +169,62 @@ export default function MainLayout({ currentUser, onLogout }) {
             {activeSection === "tickets" && (
               <>
                 <h1 className="text-2xl font-semibold tracking-tight">
-                  Мои тикеты
+                  {isUser ? "Мои тикеты" : "Тикеты"}
                 </h1>
                 <p className="text-sm text-[var(--text-muted)]">
-                  Список созданных обращений
+                  {isUser
+                    ? "Список созданных вами обращений"
+                    : "Обращение пользователей"}
                 </p>
               </>
             )}
 
-            {activeSection === "dashboard" && (isAdmin || isSupport) && (
+            {activeSection === "dashboard" && isAdmin && (
               <>
                 <h1 className="text-2xl font-semibold tracking-tight">
                   Дашборд
                 </h1>
                 <p className="text-sm text-[var(--text-muted)]">
-                  Общая картина обращений
+                  Общая картина обращений по всем подразделениям
                 </p>
               </>
             )}
 
-            {activeSection === "users" && isSupport && (
-              <h1 className="text-2xl font-semibold tracking-tight">
-                Пользователи
-              </h1>
+            {activeSection === "users" && (isSupport || isAdmin) && (
+              <>
+                <h1 className="text-2xl font-semibold tracking-tight">
+                  Пользователи
+                </h1>
+                <p className="text-sm text-[var(--text-muted)]">
+                  Список сотрудников и их рабочих мест
+                </p>
+              </>
             )}
 
-            {activeSection === "admin" && isAdmin && (
-              <h1 className="text-2xl font-semibold tracking-tight">
-                Админ-панель
-              </h1>
+            {activeSection === "admin" && (isSupport || isAdmin) && (
+              <>
+                <h1 className="text-2xl font-semibold tracking-tight">
+                  Панель поддержки
+                </h1>
+                <p className="text-sm text-[var(--text-muted)]">
+                  Управление категориями и настройками
+                </p>
+              </>
             )}
 
-            {activeSection === "profile" && (
-              <h1 className="text-2xl font-semibold tracking-tight">
-                Профиль пользователя
-              </h1>
+            {activeSection === "profile" && isUser && (
+              <>
+                <h1 className="text-2xl font-semibold tracking-tight">
+                  Профиль пользователя
+                </h1>
+                <p className="text-sm text-[var(--text-muted)]">
+                  Личные данные и мои тикеты
+                </p>
+              </>
             )}
           </div>
 
-          {activeSection === "tickets" && (
+          {showCreateTicketButton && (
             <button
               onClick={() => setIsCreateOpen(true)}
               className="px-3 py-1.5 text-sm rounded-xl border border-[var(--border-subtle)] hover:bg-[var(--bg-card)] transition"
@@ -164,7 +241,7 @@ export default function MainLayout({ currentUser, onLogout }) {
               {selectedTicket ? (
                 // когда тикет выбран — два столбца
                 <>
-                  <div className="w-[40%] min-w-[320px] max-w-md h-full">
+                  <div className="w-[40%] min-w-[320px] max-w-md h-full min-h-0">
                     <TicketList
                       tickets={tickets}
                       selectedId={selectedTicketId}
@@ -180,7 +257,7 @@ export default function MainLayout({ currentUser, onLogout }) {
                     />
                   </div>
 
-                  <div className="flex-1 h-full">
+                  <div className="flex-1 h-full min-h-0">
                     <TicketDetail
                       ticket={selectedTicket}
                       onClose={() => setSelectedTicketId(null)}
@@ -196,7 +273,7 @@ export default function MainLayout({ currentUser, onLogout }) {
                 </>
               ) : (
                 // когда тикет НЕ выбран — только список, на всю ширину
-                <div className="flex-1 h-full">
+                <div className="flex-1 h-full min-h-0">
                   <TicketList
                     tickets={tickets}
                     selectedId={selectedTicketId}
@@ -215,17 +292,35 @@ export default function MainLayout({ currentUser, onLogout }) {
             </>
           )}
 
-          {(isSupport || isAdmin) && activeSection === "dashboard" && (
-            <Dashboard tickets={tickets} />
+          {showDashboard && (
+            <div className="w-full h-full min-h-0">
+              <Dashboard tickets={tickets} />
+            </div>
           )}
 
-          {isSupport && activeSection === "users" && (
-            <AdminUsers tickets={tickets} />
+          {showUsers && (
+            <div className="w-full h-full min-h-0">
+              <AdminUsers tickets={tickets} />
+            </div>
           )}
 
-          {isAdmin && activeSection === "admin" && <AdminPanel />}
+          {showAdminPanel && (
+            <div className="w-full h-full min-h-0">
+              <AdminPanel
+                categories={categories}
+                tickets={tickets}
+                onAddCategory={handleAddCategory}
+                onUpdateCategory={handleUpdateCategory}
+                onDeleteCategory={handleDeleteCategory}
+              />
+            </div>
+          )}
 
-          {activeSection === "profile" && <ProfilePage />}
+          {showProfile && (
+            <div className="w-full h-full min-h-0">
+              <ProfilePage />
+            </div>
+          )}
         </section>
 
         <CreateTicketModal
@@ -235,6 +330,7 @@ export default function MainLayout({ currentUser, onLogout }) {
             handleCreateTicket(data);
             setIsCreateOpen(false);
           }}
+          categories={categories}
         />
       </main>
     </div>

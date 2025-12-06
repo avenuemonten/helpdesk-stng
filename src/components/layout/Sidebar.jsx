@@ -10,36 +10,23 @@ const MENU_BY_ROLE = {
     { id: "tickets", label: "Мои тикеты" },
   ],
   support: [
-    { id: "dashboard", label: "Дашборд" },
     { id: "tickets", label: "Тикеты" },
     { id: "users", label: "Пользователи" },
-    { id: "admin", label: "Админ-панель" },
-    { id: "profile", label: "Профиль" },
+    { id: "admin", label: "Панель поддержки" },
   ],
   admin: [
     { id: "dashboard", label: "Дашборд" },
     { id: "tickets", label: "Тикеты" },
     { id: "users", label: "Пользователи" },
-    { id: "admin", label: "Админ-панель" },
-    { id: "profile", label: "Профиль" },
+    { id: "admin", label: "Панель поддержки" },
   ],
 };
 
 export default function Sidebar({ activeSection = "tickets", onSectionChange }) {
   const { user, logout } = useAuth();
 
-  // Сейчас у тебя role приходит строкой типа "Admin / IT Support" или "Пользователь"
-  // Приводим к нашим ключам: user | support | admin
-  let roleKey = "user";
-  const rawRole = (user?.role || "").toLowerCase();
-
-  if (rawRole.includes("admin")) {
-    roleKey = "admin";
-  } else if (rawRole.includes("support") || rawRole.includes("поддерж")) {
-    roleKey = "support";
-  } else {
-    roleKey = "user";
-  }
+  // Приводим строку роли к нашим ключам: user | support | admin
+  const roleKey = "user";
 
   const menuItems = MENU_BY_ROLE[roleKey];
 
@@ -50,11 +37,17 @@ export default function Sidebar({ activeSection = "tickets", onSectionChange }) 
         <div className="text-[11px] text-[var(--text-muted)] mb-1">
           СТНГ / Helpdesk
         </div>
-        <div className="text-sm font-semibold">Панель поддержки</div>
+        <div className="text-sm font-semibold">
+          {roleKey === "user"
+            ? "Панель пользователя"
+            : roleKey === "support"
+            ? "Панель поддержки"
+            : "Админ-панель"}
+        </div>
       </div>
 
       {/* Меню */}
-      <nav className="flex-1 px-3 py-4 space-y-1">
+      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {menuItems.map((item) => (
           <SidebarItem
             key={item.id}
@@ -74,17 +67,36 @@ export default function Sidebar({ activeSection = "tickets", onSectionChange }) 
           </div>
 
           <div className="flex-1 min-w-0">
+            {/* Фамилия.И.О */}
             <div className="text-xs font-medium truncate">
-              {user?.fullname || user?.username || "Пользователь"}
+              {formatCompactName(user)}
             </div>
-            <div className="text-[10px] text-[var(--text-muted)] truncate">
+
+            {/* Бейдж роли для support / admin */}
+            {roleKey !== "user" && (
+              <div className="mt-0.5">
+                <span
+                  className={[
+                    "inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-semibold tracking-wide border",
+                    roleKey === "admin"
+                      ? "bg-rose-100 text-rose-700 border-rose-200"
+                      : "bg-amber-100 text-amber-700 border-amber-200",
+                  ].join(" ")}
+                >
+                  {roleKey === "admin" ? "ADMINISTRATOR" : "SUPPORT"}
+                </span>
+              </div>
+            )}
+
+            {/* Подразделение / имя компьютера или fallback */}
+            <div className="text-[10px] text-[var(--text-muted)] truncate mt-0.5">
               {user?.department && user?.computerName
                 ? `${user.department} / ${user.computerName}`
+                : roleKey === "user"
+                ? "Сотрудник"
                 : roleKey === "admin"
                 ? "Администратор"
-                : roleKey === "support"
-                ? "Поддержка"
-                : "Сотрудник"}
+                : "Поддержка"}
             </div>
           </div>
 
@@ -94,7 +106,7 @@ export default function Sidebar({ activeSection = "tickets", onSectionChange }) 
             className="w-7 h-7 rounded-full border border-[var(--border-subtle)] flex items-center justify-center text-[11px] text-slate-500 hover:bg-rose-50 hover:text-rose-500 hover:border-rose-200 transition-colors"
             onClick={logout}
           >
-            ⎋
+            ⏻
           </button>
         </div>
       </div>
@@ -129,4 +141,21 @@ function getUserInitials(user) {
   }
 
   return (parts[0][0] + (parts[1]?.[0] || "")).toUpperCase();
+}
+
+// Формат: "Заболоцкий Дуолан Спиридонович" -> "Заболоцкий.Д.С"
+function formatCompactName(user) {
+  const base = user?.fullname || user?.username;
+  if (!base) return "Пользователь";
+
+  const parts = base.trim().split(/\s+/);
+  if (parts.length === 1) return base;
+
+  const [last, first, middle] = parts;
+  let result = last || base;
+
+  if (first) result += `.${first[0].toUpperCase()}`;
+  if (middle) result += `.${middle[0].toUpperCase()}`;
+
+  return result;
 }

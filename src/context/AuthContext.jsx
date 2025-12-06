@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 const AuthContext = createContext(null);
 
 // IP твоей Ubuntu. Если поменяется — поменяешь тут одну строку.
-const API_BASE = "http://192.168.171.129:3000/api";
+const API_BASE = "http://192.168.171.130:3000/api";
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);   // { id, username, fullname, department, computerName, ... }
