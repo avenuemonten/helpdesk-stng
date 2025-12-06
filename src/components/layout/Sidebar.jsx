@@ -1,26 +1,51 @@
 // src/components/layout/Sidebar.jsx
 import React from "react";
+import { useAuth } from "../../context/AuthContext";
 
-export default function Sidebar({
-  activeSection = "dashboard",
-  onSectionChange,
-  isAdmin = true,
-  currentUser,
-  onLogout,
-}) {
-  const initials = getInitials(
-    currentUser?.fullname || currentUser?.username || "Пользователь"
-  );
+// Карта меню по ролям
+// roleKey: 'user' | 'support' | 'admin'
+const MENU_BY_ROLE = {
+  user: [
+    { id: "profile", label: "Профиль" },
+    { id: "tickets", label: "Мои тикеты" },
+  ],
+  support: [
+    { id: "dashboard", label: "Дашборд" },
+    { id: "tickets", label: "Тикеты" },
+    { id: "users", label: "Пользователи" },
+    { id: "admin", label: "Админ-панель" },
+    { id: "profile", label: "Профиль" },
+  ],
+  admin: [
+    { id: "dashboard", label: "Дашборд" },
+    { id: "tickets", label: "Тикеты" },
+    { id: "users", label: "Пользователи" },
+    { id: "admin", label: "Админ-панель" },
+    { id: "profile", label: "Профиль" },
+  ],
+};
 
-  const line2 = currentUser
-    ? `${currentUser.department || "Без отдела"} / ${
-        currentUser.computerName || "Без ПК"
-      }`
-    : "Не авторизован";
+export default function Sidebar({ activeSection = "tickets", onSectionChange }) {
+  const { user, logout } = useAuth();
+
+  // Сейчас у тебя role приходит строкой типа "Admin / IT Support" или "Пользователь"
+  // Приводим к нашим ключам: user | support | admin
+  let roleKey = "user";
+  const rawRole = (user?.role || "").toLowerCase();
+
+  if (rawRole.includes("admin")) {
+    roleKey = "admin";
+  } else if (rawRole.includes("support") || rawRole.includes("поддерж")) {
+    roleKey = "support";
+  } else {
+    roleKey = "user";
+  }
+
+  const menuItems = MENU_BY_ROLE[roleKey];
 
   return (
     <aside className="w-60 h-full bg-[#f8fafc] border-r border-[var(--border-subtle)] flex flex-col">
-      {/* Логотип / заголовок слева */}
+      {/* Верхняя шапка */}
       <div className="px-4 py-4 border-b border-[var(--border-subtle)]">
         <div className="text-[11px] text-[var(--text-muted)] mb-1">
           СТНГ / Helpdesk
@@ -28,68 +53,48 @@ export default function Sidebar({
         <div className="text-sm font-semibold">Панель поддержки</div>
       </div>
 
-      {/* Навигация */}
-      <nav className="px-2 py-3 space-y-1 text-sm">
-        <SidebarItem
-          label="Дашборд"
-          active={activeSection === "dashboard"}
-          onClick={() => onSectionChange?.("dashboard")}
-        />
-        <SidebarItem
-          label="Тикеты"
-          active={activeSection === "tickets"}
-          onClick={() => onSectionChange?.("tickets")}
-        />
-        {isAdmin && (
+      {/* Меню */}
+      <nav className="flex-1 px-3 py-4 space-y-1">
+        {menuItems.map((item) => (
           <SidebarItem
-            label="Пользователи"
-            active={activeSection === "users"}
-            onClick={() => onSectionChange?.("users")}
+            key={item.id}
+            label={item.label}
+            active={activeSection === item.id}
+            onClick={() => onSectionChange(item.id)}
           />
-        )}
-        {isAdmin && (
-          <SidebarItem
-            label="Админ-панель"
-            active={activeSection === "admin"}
-            onClick={() => onSectionChange?.("admin")}
-          />
-        )}
-        <SidebarItem
-          label="Профиль"
-          active={activeSection === "profile"}
-          onClick={() => onSectionChange?.("profile")}
-        />
+        ))}
       </nav>
 
-      {/* Юзер-карточка снизу */}
-      <div className="mt-auto px-3 py-3 border-t border-[var(--border-subtle)]">
-        <div className="w-full flex items-center justify-between gap-3 rounded-xl bg-white border border-[var(--border-subtle)] px-3 py-2">
-          <button
-            type="button"
-            onClick={() => onSectionChange?.("profile")}
-            className="flex items-center gap-2 text-left flex-1"
-          >
-            <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center text-[11px] font-semibold">
-              {initials}
-            </div>
-            <div className="flex flex-col">
-              <span className="text-xs font-semibold leading-tight">
-                {currentUser?.fullname || currentUser?.username || "Пользователь"}
-              </span>
-              <span className="text-[10px] text-[var(--text-muted)] leading-tight">
-                {line2}
-              </span>
-            </div>
-          </button>
+      {/* Нижний блок с пользователем */}
+      <div className="border-t border-[var(--border-subtle)] px-3 py-3">
+        <div className="flex items-center gap-3">
+          {/* Аватар-кружок с инициалами */}
+          <div className="w-9 h-9 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-semibold">
+            {getUserInitials(user)}
+          </div>
 
-          {/* Иконка выхода */}
+          <div className="flex-1 min-w-0">
+            <div className="text-xs font-medium truncate">
+              {user?.fullname || user?.username || "Пользователь"}
+            </div>
+            <div className="text-[10px] text-[var(--text-muted)] truncate">
+              {user?.department && user?.computerName
+                ? `${user.department} / ${user.computerName}`
+                : roleKey === "admin"
+                ? "Администратор"
+                : roleKey === "support"
+                ? "Поддержка"
+                : "Сотрудник"}
+            </div>
+          </div>
+
+          {/* Кнопка выхода */}
           <button
-            type="button"
-            onClick={onLogout}
-            className="w-7 h-7 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:bg-red-50 hover:text-red-500 transition-colors"
             title="Выйти"
+            className="w-7 h-7 rounded-full border border-[var(--border-subtle)] flex items-center justify-center text-[11px] text-slate-500 hover:bg-rose-50 hover:text-rose-500 hover:border-rose-200 transition-colors"
+            onClick={logout}
           >
-            ⏏
+            ⎋
           </button>
         </div>
       </div>
@@ -113,12 +118,15 @@ function SidebarItem({ label, active, onClick }) {
   );
 }
 
-function getInitials(name = "") {
-  const parts = name.trim().split(/\s+/);
-  if (!parts.length) return "ЮЗ";
-  if (parts.length === 1) return parts[0][0]?.toUpperCase() || "ЮЗ";
-  return (
-    (parts[0][0] || "").toUpperCase() +
-    (parts[parts.length - 1][0] || "").toUpperCase()
-  );
+function getUserInitials(user) {
+  if (!user?.fullname && !user?.username) return "??";
+
+  const base = user.fullname || user.username;
+  const parts = base.trim().split(" ");
+
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+
+  return (parts[0][0] + (parts[1]?.[0] || "")).toUpperCase();
 }

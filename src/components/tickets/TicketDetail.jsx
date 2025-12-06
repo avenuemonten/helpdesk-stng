@@ -56,8 +56,9 @@ export default function TicketDetail({
   };
 
   const handleDelete = () => {
+    if (!onDelete) return;
     if (window.confirm("Удалить этот тикет безвозвратно?")) {
-      onDelete?.(ticket.id);
+      onDelete(ticket.id);
     }
   };
 
@@ -102,18 +103,19 @@ export default function TicketDetail({
           <StatusBadge status={ticket.status} />
           <PriorityBadge priority={ticket.priority} />
 
-          {ticket.status !== "closed" ? (
+          {/* Пользователь НЕ может закрывать тикет — кнопка есть только если есть onChangeStatus */}
+          {onChangeStatus && ticket.status !== "closed" ? (
             <button
               onClick={handleCloseTicket}
               className="text-[11px] px-3 py-1 rounded-full border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 transition-colors"
             >
               Закрыть тикет
             </button>
-          ) : (
+          ) : ticket.status === "closed" ? (
             <span className="text-[10px] px-3 py-1 rounded-full border border-slate-200 text-[var(--text-muted)] bg-slate-50">
               Тикет закрыт
             </span>
-          )}
+          ) : null}
 
           <button
             onClick={onClose}
@@ -164,12 +166,14 @@ export default function TicketDetail({
 
       {/* ==== УДАЛЕНИЕ ==== */}
       <div className="px-5 pb-3 pt-1 flex justify-end">
-        <button
-          onClick={handleDelete}
-          className="text-[11px] text-red-500 hover:text-red-600"
-        >
-          Удалить тикет
-        </button>
+        {onDelete && (
+          <button
+            onClick={handleDelete}
+            className="text-[11px] text-red-500 hover:text-red-600"
+          >
+            Удалить тикет
+          </button>
+        )}
       </div>
     </div>
   );

@@ -1,21 +1,49 @@
 // src/components/auth/ProfileSetupPage.jsx
-import { useState } from "react";
-import { useAuth } from "../../context/AuthContext.jsx";
+import { useState, useMemo, useEffect, useRef } from "react";
+import { useAuth } from "../../context/AuthContext";
+
+const DEPARTMENTS = ["АУП", "СМУ", "УГРС", "ЛПУМП", "УСД", "УДТГ"];
 
 export default function ProfileSetupPage() {
-  const { user, updateUser } = useAuth();
+  const { user, saveProfile } = useAuth();
 
   const [fullName, setFullName] = useState(user?.fullname || "");
-  const [department, setDepartment] = useState(user?.department || "");
   const [computerName, setComputerName] = useState(user?.computerName || "");
+  const [department, setDepartment] = useState(user?.department || "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [deptOpen, setDeptOpen] = useState(false);
 
-  const fioError = validateFullName(fullName);
-  const deptError = validateDepartment(department);
-  const compError = validateComputerName(computerName);
+  const dropdownRef = useRef(null);
 
-  const allValid = !fioError && !deptError && !compError;
+  // закрываем дропдаун при клике вне
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setDeptOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // простая валидация
+  const isFullNameValid = useMemo(
+    () => fullName.trim().length >= 3,
+    [fullName]
+  );
+
+  const isComputerNameValid = useMemo(
+    () => /^[A-ZА-Я]-[A-ZА-Я0-9]{3,}$/i.test(computerName.trim()),
+    [computerName]
+  );
+
+  const isDepartmentValid = useMemo(
+    () => department.trim().length > 0,
+    [department]
+  );
+
+  const allValid = isFullNameValid && isComputerNameValid && isDepartmentValid;
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -25,172 +53,186 @@ export default function ProfileSetupPage() {
       setSaving(true);
       setError("");
 
-      // ПОКА БЕЗ БЭКЕНДА: просто обновляем в контексте + localStorage
-      updateUser({
+      await saveProfile({
         fullname: fullName.trim(),
         department: department.trim(),
         computerName: computerName.trim(),
       });
-
-      // когда появится бэкенд:
-      // await fetch("/api/users/me", { method: "PATCH", ... })
+      // После успешного saveProfile нас уже пустит в основную панель
     } catch (err) {
-      setError(err.message || "Ошибка при сохранении");
+      setError(err.message || "Ошибка при сохранении данных");
     } finally {
       setSaving(false);
     }
   }
 
+  const inputBase =
+    "w-full rounded-full border px-4 py-3 text-sm outline-none transition-colors bg-white";
+
+  function statusClasses(valid, value) {
+    if (!value) return "border-[#e4e7ee]";
+    return valid ? "border-emerald-500" : "border-rose-400";
+  }
+
+  function statusIcon(valid, value) {
+    if (!value) return null;
+    if (valid) {
+      return (
+        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-500 text-lg">
+          ✓
+        </span>
+      );
+    }
+    return (
+      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-rose-500 text-lg">
+        ✕
+      </span>
+    );
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[var(--bg)] px-4">
-      <div className="w-full max-w-2xl bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-2xl shadow-soft px-6 py-6">
-        <div className="mb-4">
-          <div className="text-[11px] text-[var(--text-muted)] mb-1">
-            Первый вход в Helpdesk
-          </div>
-          <h1 className="text-lg font-semibold">Заполни карточку сотрудника</h1>
-          <p className="text-xs text-[var(--text-muted)] mt-1">
-            Эти данные будут подставляться во все тикеты и появятся в левом
-            нижнем углу панели.
-          </p>
-        </div>
+    <div className="min-h-screen flex items-center justify-center bg-[#f5f7fb]">
+      <div className="w-full max-w-3xl rounded-3xl bg-white shadow-[0_20px_60px_rgba(15,23,42,0.08)] px-10 py-8">
+        <div className="text-xs text-slate-400 mb-2">Первый вход в Helpdesk</div>
+        <h1 className="text-xl font-semibold text-slate-900 mb-1">
+          Заполни карточку сотрудника
+        </h1>
+        <p className="text-xs text-slate-500 mb-6">
+          Эти данные будут подставляться во все тикеты и появятся в левом нижнем
+          углу панели.
+        </p>
 
         {error && (
-          <div className="mb-3 text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+          <div className="mb-4 rounded-2xl bg-rose-50 px-4 py-3 text-xs text-rose-600">
             {error}
           </div>
         )}
 
-        <form
-          onSubmit={handleSubmit}
-          className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs"
-        >
-          {/* ФИО */}
-          <FieldBox
-            label="ФИО"
-            placeholder="Например: Заболоцкий Дуолан Спиридонович"
-            value={fullName}
-            onChange={setFullName}
-            error={fioError}
-          />
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {/* ФИО */}
+            <div>
+              <label className="block mb-1 text-xs font-medium text-slate-600">
+                ФИО
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Например: Заболоцкий Дуолан Спиридонович"
+                  className={`${inputBase} ${statusClasses(
+                    isFullNameValid,
+                    fullName
+                  )}`}
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                />
+                {statusIcon(isFullNameValid, fullName)}
+              </div>
+            </div>
 
-          {/* Имя компьютера */}
-          <FieldBox
-            label="Имя компьютера"
-            placeholder="Например: A-SIT11"
-            value={computerName}
-            onChange={setComputerName}
-            error={compError}
-            hint="Формат: буква отдела, дефис, код ПК. Пример: A-SIT11"
-          />
-
-          {/* Отдел */}
-          <FieldBox
-            label="Отдел"
-            placeholder="Например: IT Support, Бухгалтерия…"
-            value={department}
-            onChange={setDepartment}
-            error={deptError}
-          />
-
-          <div className="md:col-span-2 text-[11px] text-[var(--text-muted)] mt-1">
-            Все поля обязательны. Когда блок подсвечен зелёным с галочкой — всё
-            ок. Только после этого станет доступна кнопка &laquo;Подтвердить&raquo;.
+            {/* Имя компьютера */}
+            <div>
+              <label className="block mb-1 text-xs font-medium text-slate-600">
+                Имя компьютера
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Например: A-SIT11"
+                  className={`${inputBase} ${statusClasses(
+                    isComputerNameValid,
+                    computerName
+                  )}`}
+                  value={computerName}
+                  onChange={(e) =>
+                    setComputerName(e.target.value.toUpperCase())
+                  }
+                />
+                {statusIcon(isComputerNameValid, computerName)}
+              </div>
+              <p className="mt-1 text-[10px] text-slate-400">
+                Формат: буква отдела, дефис, код ПК. Пример: A-SIT11
+              </p>
+            </div>
           </div>
 
-          <div className="md:col-span-2 flex justify-end mt-2">
+          {/* Отдел — кастомный дропдаун БЕЗ галочки/крестика */}
+          <div>
+            <label className="block mb-1 text-xs font-medium text-slate-600">
+              Отдел
+            </label>
+            <div ref={dropdownRef} className="relative inline-block w-full md:w-64">
+              <button
+                type="button"
+                onClick={() => setDeptOpen((v) => !v)}
+                className={`${inputBase} flex items-center justify-between ${statusClasses(
+                  isDepartmentValid,
+                  department
+                )}`}
+              >
+                <span
+                  className={
+                    department ? "text-slate-900" : "text-slate-400 text-sm"
+                  }
+                >
+                  {department || "Выберите отдел"}
+                </span>
+                {/* Только аккуратная стрелка */}
+                <span
+                  className={`ml-2 text-[10px] text-slate-400 transition-transform ${
+                    deptOpen ? "rotate-180" : ""
+                  }`}
+                >
+                  ▼
+                </span>
+              </button>
+
+              {deptOpen && (
+                <div className="absolute z-20 mt-2 w-full rounded-2xl border border-slate-200 bg-white shadow-[0_16px_40px_rgba(15,23,42,0.14)] overflow-hidden text-sm">
+                  <div className="px-4 py-2 text-[11px] text-slate-400 border-b border-slate-100">
+                    — Выберите отдел —
+                  </div>
+                  {DEPARTMENTS.map((dep) => (
+                    <button
+                      type="button"
+                      key={dep}
+                      className={`w-full text-left px-4 py-2 hover:bg-slate-50 ${
+                        dep === department ? "bg-slate-50 font-medium" : ""
+                      }`}
+                      onClick={() => {
+                        setDepartment(dep);
+                        setDeptOpen(false);
+                      }}
+                    >
+                      {dep}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <p className="text-[11px] text-slate-400">
+            Все поля обязательны. Когда блок подсвечен зелёным с галочкой — всё
+            ок. Только после этого станет доступна кнопка «Подтвердить».
+          </p>
+
+          <div className="flex justify-end mt-2">
             <button
               type="submit"
               disabled={!allValid || saving}
-              className={`h-9 px-4 rounded-xl text-xs font-semibold text-white transition-colors ${
-                allValid && !saving
-                  ? "bg-slate-900 hover:bg-slate-800"
-                  : "bg-slate-300 cursor-not-allowed"
-              }`}
+              className={`rounded-full px-7 py-2 text-sm font-medium text-white transition-colors
+                ${
+                  allValid && !saving
+                    ? "bg-slate-900 hover:bg-slate-800"
+                    : "bg-slate-300 cursor-not-allowed"
+                }`}
             >
-              {saving ? "Сохраняем…" : "Подтвердить"}
+              {saving ? "Сохраняю..." : "Подтвердить"}
             </button>
           </div>
         </form>
       </div>
-    </div>
-  );
-}
-
-/* ===== Валидация ===== */
-
-function validateFullName(value) {
-  if (!value.trim()) return "Обязательное поле";
-  const parts = value.trim().split(/\s+/);
-  if (parts.length < 2) return "Укажи минимум фамилию и имя";
-  return "";
-}
-
-function validateDepartment(value) {
-  if (!value.trim()) return "Обязательное поле";
-  return "";
-}
-
-function validateComputerName(value) {
-  if (!value.trim()) return "Обязательное поле";
-  const pattern = /^[A-ZА-Я]-[A-ZА-Я0-9]{3,6}$/;
-  if (!pattern.test(value.trim())) {
-    return "Формат типа A-SIT11 (буква отдела, дефис, код ПК)";
-  }
-  return "";
-}
-
-function FieldBox({ label, value, onChange, placeholder, error, hint }) {
-  const hasValue = Boolean(value);
-  const ok = hasValue && !error;
-
-  const borderColor = error
-    ? "border-red-400 bg-red-50"
-    : ok
-    ? "border-emerald-400 bg-emerald-50"
-    : "border-[var(--border-subtle)] bg-[var(--bg)]";
-
-  const icon = error
-    ? "✕"
-    : ok
-    ? "✓"
-    : "";
-
-  const iconColor = error
-    ? "text-red-500"
-    : ok
-    ? "text-emerald-500"
-    : "text-transparent";
-
-  return (
-    <div className="flex flex-col gap-1">
-      <label className="text-[11px] font-medium">{label}</label>
-
-      <div className={`relative`}>
-        <input
-          className={`w-full rounded-xl border px-3 py-2 pr-8 text-xs outline-none transition-colors ${borderColor}`}
-          placeholder={placeholder}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-        />
-
-        {/* Иконка внутри input справа */}
-        <span
-          className={`absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold ${iconColor}`}
-        >
-          {icon}
-        </span>
-      </div>
-
-      {/* Ошибка */}
-      {error && hasValue && (
-        <div className="text-[10px] text-red-500">{error}</div>
-      )}
-
-      {/* Подсказка */}
-      {!error && hint && (
-        <div className="text-[10px] text-[var(--text-muted)]">{hint}</div>
-      )}
     </div>
   );
 }

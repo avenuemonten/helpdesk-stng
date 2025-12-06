@@ -7,12 +7,14 @@ export default function TicketList({
   onChangeStatus,
   onChangePriority,
   onDelete,
-  variant = "full", // full | compact
+  variant = "full", // full | compact | readonly
 }) {
   const [openPriorityId, setOpenPriorityId] = useState(null);
   const [openStatusId, setOpenStatusId] = useState(null);
 
-  const isFull = variant === "full";
+  // "compact" — только компактный режим, всё остальное считаем "full"
+  const isFull = variant !== "compact";
+  const isReadOnly = variant === "readonly";
 
   function handlePriority(ticketId, priority) {
     onChangePriority?.(ticketId, priority);
@@ -88,57 +90,83 @@ export default function TicketList({
 
                 {/* Приоритет */}
                 <div className="flex-[1] relative flex justify-end min-w-[80px]">
-                  <button
-                    onClick={() =>
-                      setOpenPriorityId(
-                        openPriorityId === ticket.id ? null : ticket.id
-                      )
-                    }
-                  >
-                    <PriorityBadge priority={ticket.priority} withCaret />
-                  </button>
+                  {isReadOnly || !onChangePriority ? (
+                    // ТОЛЬКО бейдж, без кнопки и стрелки
+                    <PriorityBadge priority={ticket.priority} />
+                  ) : (
+                    <>
+                      <button
+                        onClick={() =>
+                          setOpenPriorityId(
+                            openPriorityId === ticket.id ? null : ticket.id
+                          )
+                        }
+                      >
+                        <PriorityBadge priority={ticket.priority} withCaret />
+                      </button>
 
-                  {openPriorityId === ticket.id && (
-                    <Dropdown>
-                      <DropdownItem onClick={() => handlePriority(ticket.id, "high")}>
-                        <PriorityBadge priority="high" wide />
-                      </DropdownItem>
-                      <DropdownItem onClick={() => handlePriority(ticket.id, "medium")}>
-                        <PriorityBadge priority="medium" wide />
-                      </DropdownItem>
-                      <DropdownItem onClick={() => handlePriority(ticket.id, "low")}>
-                        <PriorityBadge priority="low" wide />
-                      </DropdownItem>
-                    </Dropdown>
+                      {openPriorityId === ticket.id && (
+                        <Dropdown>
+                          <DropdownItem
+                            onClick={() => handlePriority(ticket.id, "high")}
+                          >
+                            <PriorityBadge priority="high" wide />
+                          </DropdownItem>
+                          <DropdownItem
+                            onClick={() => handlePriority(ticket.id, "medium")}
+                          >
+                            <PriorityBadge priority="medium" wide />
+                          </DropdownItem>
+                          <DropdownItem
+                            onClick={() => handlePriority(ticket.id, "low")}
+                          >
+                            <PriorityBadge priority="low" wide />
+                          </DropdownItem>
+                        </Dropdown>
+                      )}
+                    </>
                   )}
                 </div>
 
                 {/* Статус */}
                 <div className="flex-[1] relative flex justify-end min-w-[80px]">
-                  <button
-                    onClick={() =>
-                      setOpenStatusId(
-                        openStatusId === ticket.id ? null : ticket.id
-                      )
-                    }
-                  >
-                    <StatusBadge status={ticket.status} withCaret />
-                  </button>
-
-                  {openStatusId === ticket.id && (
-                    <Dropdown>
-                      <DropdownItem onClick={() => handleStatus(ticket.id, "open")}>
-                        <StatusBadge status="open" wide />
-                      </DropdownItem>
-                      <DropdownItem
-                        onClick={() => handleStatus(ticket.id, "in_progress")}
+                  {isReadOnly || !onChangeStatus ? (
+                    // ТОЛЬКО бейдж, без кнопки и стрелки
+                    <StatusBadge status={ticket.status} />
+                  ) : (
+                    <>
+                      <button
+                        onClick={() =>
+                          setOpenStatusId(
+                            openStatusId === ticket.id ? null : ticket.id
+                          )
+                        }
                       >
-                        <StatusBadge status="in_progress" wide />
-                      </DropdownItem>
-                      <DropdownItem onClick={() => handleStatus(ticket.id, "closed")}>
-                        <StatusBadge status="closed" wide />
-                      </DropdownItem>
-                    </Dropdown>
+                        <StatusBadge status={ticket.status} withCaret />
+                      </button>
+
+                      {openStatusId === ticket.id && (
+                        <Dropdown>
+                          <DropdownItem
+                            onClick={() => handleStatus(ticket.id, "open")}
+                          >
+                            <StatusBadge status="open" wide />
+                          </DropdownItem>
+                          <DropdownItem
+                            onClick={() =>
+                              handleStatus(ticket.id, "in_progress")
+                            }
+                          >
+                            <StatusBadge status="in_progress" wide />
+                          </DropdownItem>
+                          <DropdownItem
+                            onClick={() => handleStatus(ticket.id, "closed")}
+                          >
+                            <StatusBadge status="closed" wide />
+                          </DropdownItem>
+                        </Dropdown>
+                      )}
+                    </>
                   )}
                 </div>
               </div>

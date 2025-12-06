@@ -5,74 +5,46 @@ import TicketDetail from "../tickets/TicketDetail.jsx";
 import CreateTicketModal from "../modals/CreateTicketModal.jsx";
 import AdminPanel from "../admin/AdminPanel.jsx";
 import AdminUsers from "../admin/AdminUsers.jsx";
-import Dashboard from "../dashboard/Dashboard.jsx"; // твой жирный дашборд
-import ProfilePage from "../profile/ProfilePage.jsx"; // профиль пользователя
-
-// Стартовые тикеты
-const initialTickets = [
-  {
-    id: 1,
-    title: "Не открывается 1С",
-    department: "1С и бухгалтерия",
-    status: "open",
-    priority: "high",
-    createdAt: "Сегодня, 10:24",
-    description: "При запуске 1С возникает ошибка, программа закрывается.",
-    computerName: "A-SIT11",
-  },
-  {
-    id: 2,
-    title: "Проблема с VPN",
-    department: "VPN / удалённый доступ",
-    status: "in_progress",
-    priority: "medium",
-    createdAt: "Вчера, 18:02",
-    description: "Не получается подключиться к корпоративному VPN из дома.",
-    computerName: "U-VEGU18",
-  },
-];
-
-// Стартовые категории
-const initialCategories = [
-  {
-    id: 1,
-    name: "1С и бухгалтерия",
-    description: "Ошибки 1С, доступ к базам, отчёты, документы.",
-  },
-  {
-    id: 2,
-    name: "VPN / удалённый доступ",
-    description: "Подключение из дома, с ноутбуков и телефонов.",
-  },
-  {
-    id: 3,
-    name: "Компьютеры и ноутбуки",
-    description: "Не включается, тормозит, синий экран, периферия.",
-  },
-  {
-    id: 4,
-    name: "Печать и сканирование",
-    description: "Принтеры, МФУ, сканы, очередь печати.",
-  },
-];
+import Dashboard from "../dashboard/Dashboard.jsx";
+import ProfilePage from "../profile/ProfilePage.jsx";
 
 export default function MainLayout({ currentUser, onLogout }) {
-  const isAdmin = true; // потом возьмём из auth / роли
+  const role = currentUser?.role || "user"; // user | support | admin
+  const isAdmin = role === "admin";
+  const isSupport = role === "support";
+  const isUser = role === "user";
 
-  const [tickets, setTickets] = useState(initialTickets);
+  const [tickets, setTickets] = useState([
+    {
+      id: 1,
+      title: "Не открывается 1С",
+      department: "1С и бухгалтерия",
+      status: "open",
+      priority: "high",
+      createdAt: "Сегодня, 10:24",
+      description: "При запуске 1С возникает ошибка.",
+      computerName: "A-SIT11",
+    },
+    {
+      id: 2,
+      title: "Проблема с VPN",
+      department: "VPN / удалённый доступ",
+      status: "in_progress",
+      priority: "medium",
+      createdAt: "Вчера, 18:02",
+      description: "Не получается подключиться к VPN.",
+      computerName: "U-VEGU18",
+    },
+  ]);
+
+  const [activeSection, setActiveSection] = useState(
+    isUser ? "tickets" : "dashboard"
+  );
   const [selectedTicketId, setSelectedTicketId] = useState(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
-  // "dashboard" | "tickets" | "users" | "admin" | "profile"
-  const [activeSection, setActiveSection] = useState("dashboard");
-
-  const [categories, setCategories] = useState(initialCategories);
-
   const selectedTicket =
     tickets.find((t) => t.id === selectedTicketId) || null;
-  const hasSelection = !!selectedTicket;
-
-  // ====== TICKETS ======
 
   function handleSelectTicket(id) {
     setSelectedTicketId(id);
@@ -86,11 +58,11 @@ export default function MainLayout({ currentUser, onLogout }) {
     const newTicket = {
       id: nextId,
       title: data.title,
-      department: data.category || "Не указана категория",
+      department: data.category,
       status: "open",
-      priority: data.priority || "medium",
-      description: data.description || "",
-      computerName: data.computerName || "",
+      priority: data.priority,
+      description: data.description,
+      computerName: data.computerName,
       createdAt: "Только что",
     };
 
@@ -98,232 +70,164 @@ export default function MainLayout({ currentUser, onLogout }) {
     setSelectedTicketId(nextId);
   }
 
-  function handleChangeTicketStatus(id, nextStatus) {
+  function handleChangeTicketStatus(id, status) {
+    if (isUser) return;
     setTickets((prev) =>
-      prev.map((t) =>
-        t.id === id ? { ...t, status: nextStatus } : t
-      )
+      prev.map((t) => (t.id === id ? { ...t, status } : t))
     );
   }
 
-  function handleChangeTicketPriority(id, nextPriority) {
+  function handleChangeTicketPriority(id, priority) {
+    if (isUser) return;
     setTickets((prev) =>
-      prev.map((t) =>
-        t.id === id ? { ...t, priority: nextPriority } : t
-      )
+      prev.map((t) => (t.id === id ? { ...t, priority } : t))
     );
   }
 
   function handleDeleteTicket(id) {
-    setTickets((prev) => {
-      const remaining = prev.filter((t) => t.id !== id);
-      if (id === selectedTicketId) {
-        setSelectedTicketId(remaining[0]?.id ?? null);
-      }
-      return remaining;
-    });
+    if (!isAdmin) return;
+    setTickets((prev) => prev.filter((t) => t.id !== id));
+    if (selectedTicketId === id) setSelectedTicketId(null);
   }
-
-  // ====== CATEGORIES (Admin) ======
-
-  function handleAddCategory(name, description) {
-    const trimmed = name.trim();
-    if (!trimmed) return;
-
-    const nextId = categories.length
-      ? Math.max(...categories.map((c) => c.id)) + 1
-      : 1;
-
-    const newCategory = {
-      id: nextId,
-      name: trimmed,
-      description: description.trim() || "",
-    };
-
-    setCategories((prev) => [...prev, newCategory]);
-  }
-
-  function handleUpdateCategory(id, name, description) {
-    setCategories((prev) =>
-      prev.map((c) =>
-        c.id === id
-          ? {
-              ...c,
-              name: name.trim() || c.name,
-              description: (description ?? "").trim(),
-            }
-          : c
-      )
-    );
-  }
-
-  function handleDeleteCategory(id) {
-    setCategories((prev) => prev.filter((c) => c.id !== id));
-  }
-
-  // ====== LAYOUT ======
 
   return (
-    // ВАЖНО: фиксированная высота и без внешнего скролла
     <div className="h-screen flex bg-[var(--bg)] overflow-hidden">
       <Sidebar
         isAdmin={isAdmin}
+        isSupport={isSupport}
+        isUser={isUser}
         activeSection={activeSection}
         onSectionChange={setActiveSection}
         currentUser={currentUser}
         onLogout={onLogout}
       />
 
-      {/* Правая часть */}
       <main className="flex-1 flex flex-col p-6 gap-4 min-h-0 overflow-hidden">
-        {/* Шапка */}
+        {/* HEADER */}
         <header className="flex items-center justify-between mb-2">
           <div>
-            {activeSection === "dashboard" && (
+            {activeSection === "tickets" && (
+              <>
+                <h1 className="text-2xl font-semibold tracking-tight">
+                  Мои тикеты
+                </h1>
+                <p className="text-sm text-[var(--text-muted)]">
+                  Список созданных обращений
+                </p>
+              </>
+            )}
+
+            {activeSection === "dashboard" && (isAdmin || isSupport) && (
               <>
                 <h1 className="text-2xl font-semibold tracking-tight">
                   Дашборд
                 </h1>
                 <p className="text-sm text-[var(--text-muted)]">
-                  Общая картина по тикетам и нагрузке
+                  Общая картина обращений
                 </p>
               </>
             )}
 
-            {activeSection === "tickets" && (
-              <>
-                <h1 className="text-2xl font-semibold tracking-tight">
-                  Helpdesk
-                </h1>
-                <p className="text-sm text-[var(--text-muted)]">
-                  Центр поддержки сотрудников СТНГ
-                </p>
-              </>
+            {activeSection === "users" && isSupport && (
+              <h1 className="text-2xl font-semibold tracking-tight">
+                Пользователи
+              </h1>
             )}
 
-            {activeSection === "users" && (
-              <>
-                <h1 className="text-2xl font-semibold tracking-tight">
-                  Пользователи
-                </h1>
-                <p className="text-sm text-[var(--text-muted)]">
-                  Список сотрудников и их рабочих мест
-                </p>
-              </>
-            )}
-
-            {activeSection === "admin" && (
-              <>
-                <h1 className="text-2xl font-semibold tracking-tight">
-                  Админ-панель
-                </h1>
-                <p className="text-sm text-[var(--text-muted)]">
-                  Управление категориями и структурой тикетов
-                </p>
-              </>
+            {activeSection === "admin" && isAdmin && (
+              <h1 className="text-2xl font-semibold tracking-tight">
+                Админ-панель
+              </h1>
             )}
 
             {activeSection === "profile" && (
-              <>
-                <h1 className="text-2xl font-semibold tracking-tight">
-                  Профиль пользователя
-                </h1>
-                <p className="text-sm text-[var(--text-muted)]">
-                  Личные данные, роли и мои тикеты
-                </p>
-              </>
+              <h1 className="text-2xl font-semibold tracking-tight">
+                Профиль пользователя
+              </h1>
             )}
           </div>
-
-          <div className="flex items-center gap-3">
-            {activeSection === "tickets" && (
-              <button
-                onClick={() => setIsCreateOpen(true)}
-                className="px-3 py-1.5 text-sm rounded-xl border border-[var(--border-subtle)] hover:bg-[var(--bg-card)] transition"
-              >
-                Создать тикет
-              </button>
-            )}
-          </div>
-        </header>
-
-        {/* Контент: ОБЯЗАТЕЛЬНО min-h-0 + overflow-hidden, чтобы чат скроллился внутри */}
-        <section className="flex-1 flex gap-4 min-h-0 overflow-hidden">
-          {activeSection === "dashboard" && (
-            <div className="w-full h-full min-h-0">
-              <Dashboard tickets={tickets} />
-            </div>
-          )}
 
           {activeSection === "tickets" && (
-            <>
-              {!hasSelection && (
-                <div className="w-full h-full min-h-0">
-                  <TicketList
-                    variant="full"
-                    tickets={tickets}
-                    selectedId={selectedTicketId}
-                    onSelect={handleSelectTicket}
-                    onChangeStatus={handleChangeTicketStatus}
-                    onChangePriority={handleChangeTicketPriority}
-                    onDelete={handleDeleteTicket}
-                  />
-                </div>
-              )}
+            <button
+              onClick={() => setIsCreateOpen(true)}
+              className="px-3 py-1.5 text-sm rounded-xl border border-[var(--border-subtle)] hover:bg-[var(--bg-card)] transition"
+            >
+              Создать тикет
+            </button>
+          )}
+        </header>
 
-              {hasSelection && (
+        {/* MAIN CONTENT */}
+        <section className="flex-1 flex gap-4 min-h-0 overflow-hidden">
+          {activeSection === "tickets" && (
+            <>
+              {selectedTicket ? (
+                // когда тикет выбран — два столбца
                 <>
-                  <div className="w-[40%] min-w-[320px] max-w-md h-full min-h-0">
+                  <div className="w-[40%] min-w-[320px] max-w-md h-full">
                     <TicketList
-                      variant="compact"
                       tickets={tickets}
                       selectedId={selectedTicketId}
                       onSelect={handleSelectTicket}
-                      onChangeStatus={handleChangeTicketStatus}
-                      onChangePriority={handleChangeTicketPriority}
-                      onDelete={handleDeleteTicket}
+                      onChangeStatus={
+                        isUser ? null : handleChangeTicketStatus
+                      }
+                      onChangePriority={
+                        isUser ? null : handleChangeTicketPriority
+                      }
+                      onDelete={isAdmin ? handleDeleteTicket : null}
+                      variant={isUser ? "readonly" : "full"}
                     />
                   </div>
 
-                  {/* TicketDetail с чатом */}
-                  <div className="flex-1 h-full min-h-0">
+                  <div className="flex-1 h-full">
                     <TicketDetail
                       ticket={selectedTicket}
-                      onChangeStatus={handleChangeTicketStatus}
-                      onChangePriority={handleChangeTicketPriority}
-                      onDelete={handleDeleteTicket}
                       onClose={() => setSelectedTicketId(null)}
+                      onChangeStatus={
+                        isUser ? null : handleChangeTicketStatus
+                      }
+                      onChangePriority={
+                        isUser ? null : handleChangeTicketPriority
+                      }
+                      onDelete={isAdmin ? handleDeleteTicket : null}
                     />
                   </div>
                 </>
+              ) : (
+                // когда тикет НЕ выбран — только список, на всю ширину
+                <div className="flex-1 h-full">
+                  <TicketList
+                    tickets={tickets}
+                    selectedId={selectedTicketId}
+                    onSelect={handleSelectTicket}
+                    onChangeStatus={
+                      isUser ? null : handleChangeTicketStatus
+                    }
+                    onChangePriority={
+                      isUser ? null : handleChangeTicketPriority
+                    }
+                    onDelete={isAdmin ? handleDeleteTicket : null}
+                    variant={isUser ? "readonly" : "full"}
+                  />
+                </div>
               )}
             </>
           )}
 
-          {activeSection === "users" && (
-            <div className="w-full h-full min-h-0">
-              <AdminUsers tickets={tickets} />
-            </div>
+          {(isSupport || isAdmin) && activeSection === "dashboard" && (
+            <Dashboard tickets={tickets} />
           )}
 
-          {activeSection === "admin" && (
-            <AdminPanel
-              categories={categories}
-              tickets={tickets}
-              onAddCategory={handleAddCategory}
-              onUpdateCategory={handleUpdateCategory}
-              onDeleteCategory={handleDeleteCategory}
-            />
+          {isSupport && activeSection === "users" && (
+            <AdminUsers tickets={tickets} />
           )}
 
-          {activeSection === "profile" && (
-            <div className="w-full h-full min-h-0">
-              <ProfilePage />
-            </div>
-          )}
+          {isAdmin && activeSection === "admin" && <AdminPanel />}
+
+          {activeSection === "profile" && <ProfilePage />}
         </section>
 
-        {/* Модалка создания тикета */}
         <CreateTicketModal
           open={isCreateOpen}
           onClose={() => setIsCreateOpen(false)}
@@ -331,7 +235,6 @@ export default function MainLayout({ currentUser, onLogout }) {
             handleCreateTicket(data);
             setIsCreateOpen(false);
           }}
-          categories={categories}
         />
       </main>
     </div>
