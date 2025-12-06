@@ -1,14 +1,6 @@
-// src/components/layout/Sidebar.jsx
-import React from "react";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/AuthContext.jsx";
 
-// Карта меню по ролям
-// roleKey: 'user' | 'support' | 'admin'
 const MENU_BY_ROLE = {
-  user: [
-    { id: "profile", label: "Профиль" },
-    { id: "tickets", label: "Мои тикеты" },
-  ],
   support: [
     { id: "tickets", label: "Тикеты" },
     { id: "users", label: "Пользователи" },
@@ -20,13 +12,26 @@ const MENU_BY_ROLE = {
     { id: "users", label: "Пользователи" },
     { id: "admin", label: "Панель поддержки" },
   ],
+  user: [
+    { id: "tickets", label: "Мои тикеты" },
+    { id: "profile", label: "Профиль" },
+  ],
 };
 
-export default function Sidebar({ activeSection = "tickets", onSectionChange }) {
+export default function Sidebar({ activeSection = "tickets", onSectionChange, currentUser, onLogout }) {
   const { user, logout } = useAuth();
 
   // Приводим строку роли к нашим ключам: user | support | admin
-  const roleKey = "user";
+  const rawRole = (user?.role || currentUser?.role || "").toLowerCase();
+  let roleKey = "user";
+
+  if (rawRole.includes("admin")) {
+    roleKey = "admin";
+  } else if (rawRole.includes("support") || rawRole.includes("поддерж")) {
+    roleKey = "support";
+   } else {
+    roleKey = "user";
+   }
 
   const menuItems = MENU_BY_ROLE[roleKey];
 

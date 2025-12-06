@@ -123,10 +123,10 @@ export function AuthProvider({ children }) {
     });
   }
 
-  const profileCompleted = 
-    user?.role === "admin" ||
-    user?.role === "support" ||
-      (user?.fullName && user?.department && user?.computerName);
+  const profileCompleted =
+  user?.role === "admin" ||
+  user?.role === "support" ||
+  (user?.fullname && user?.department && user?.computerName);
 
   const value = {
     user,

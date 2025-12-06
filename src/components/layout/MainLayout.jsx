@@ -1,3 +1,4 @@
+// src/components/layout/MainLayout.jsx
 import { useState } from "react";
 import Sidebar from "./Sidebar.jsx";
 import TicketList from "../tickets/TicketList.jsx";
@@ -9,11 +10,21 @@ import Dashboard from "../dashboard/Dashboard.jsx";
 import ProfilePage from "../profile/ProfilePage.jsx";
 
 export default function MainLayout({ currentUser, onLogout }) {
-  const role = "user"; // ТЕСТ РОЛИ: 'user' | 'support' | 'admin'
-  const isAdmin = role === "admin";
-  const isSupport = role === "support";
-  const isUser = role === "user";
+  // --- Роль берем из currentUser ---
+  let role = "user";
+  const rawRole = (currentUser?.role || "").toLowerCase();
 
+  if (rawRole.includes("admin")) {
+      role = "admin";
+    } else if (rawRole.includes("support") || rawRole.includes("поддерж")) {
+      role = "support";
+    } else {
+      role = "user";
+  }
+    const isAdmin = role === "admin";
+    const isSupport = role === "support";
+    const isUser = role === "user";
+    
   const [tickets, setTickets] = useState([
     {
       id: 1,
