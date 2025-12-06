@@ -1,10 +1,10 @@
-// src/context/AuthContext.jsx
 import { createContext, useContext, useEffect, useState } from "react";
 
 const AuthContext = createContext(null);
 
-// IP твоей Ubuntu. Если поменяется — поменяешь тут одну строку.
-const API_BASE = "http://192.168.171.130:3000/api";
+// Можно потом вынести в .env → VITE_API_BASE_URL
+const API_BASE =
+  import.meta.env.VITE_API_BASE_URL ?? "http://192.168.171.130:3000/api";
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);   // { id, username, fullname, department, computerName, ... }
@@ -40,14 +40,13 @@ export function AuthProvider({ children }) {
       body: JSON.stringify({ username, password, subdivision }),
     });
 
+    const data = await res.json().catch(() => null);
+
     if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error(data.error || "Ошибка авторизации");
+      throw new Error(data?.error || "Ошибка авторизации");
     }
 
-    const data = await res.json(); // { token, user }
-
-    // user с бэка: { id, username, fullName, department, computerName, role, createdAt }
+    // data: { token, user }
     const apiUser = data.user || {};
 
     // Маппинг к тому, что уже ждёт фронт (fullname, created_at)
@@ -76,7 +75,6 @@ export function AuthProvider({ children }) {
   }
 
   // ====== СОХРАНЕНИЕ ПРОФИЛЯ НА БЭКЕНДЕ ======
-  // Можно дергать из формы "Заполнить карточку сотрудника"
   async function saveProfile({ fullname, department, computerName }) {
     if (!token) {
       throw new Error("Нет токена авторизации");
@@ -89,18 +87,18 @@ export function AuthProvider({ children }) {
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
-        fullName: fullname,      // бэку нужно fullName
+        fullName: fullname, // бэку нужно fullName
         department,
         computerName,
       }),
     });
 
+    const apiUser = await res.json().catch(() => null);
+
     if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error(data.error || "Не удалось сохранить профиль");
+      throw new Error(apiUser?.error || "Не удалось сохранить профиль");
     }
 
-    const apiUser = await res.json();
     const mappedUser = {
       ...apiUser,
       fullname: apiUser.fullName ?? apiUser.fullname ?? "",
@@ -116,8 +114,7 @@ export function AuthProvider({ children }) {
     return mappedUser;
   }
 
-  // Старый локальный updateUser оставляем, чтобы ничего не сломать
-  // (может использоваться в компонентах). Он просто правит локальный state.
+  // Локальный апдейт (как было)
   function updateUser(patch) {
     setUser((prev) => {
       const next = { ...(prev || {}), ...patch };
@@ -126,9 +123,10 @@ export function AuthProvider({ children }) {
     });
   }
 
-  const profileCompleted = Boolean(
-    user?.fullname && user?.department && user?.computerName
-  );
+  const profileCompleted = 
+    user?.role === "admin" ||
+    user?.role === "support" ||
+      (user?.fullName && user?.department && user?.computerName);
 
   const value = {
     user,
@@ -136,12 +134,16 @@ export function AuthProvider({ children }) {
     loading,
     login,
     logout,
-    updateUser,   // локальный апдейт (как было)
-    saveProfile,  // новый апдейт через backend
+    updateUser,
+    saveProfile,
     profileCompleted,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {

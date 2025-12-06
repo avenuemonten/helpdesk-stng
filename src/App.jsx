@@ -6,11 +6,11 @@ import LoginPage from "./components/auth/LoginPage.jsx";
 import ProfileSetupPage from "./components/auth/ProfileSetupPage.jsx";
 
 function AppInner() {
-  const { user, loading, profileCompleted, logout } = useAuth();
+  const { user, loading, profileCompleted } = useAuth();
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--bg)] text-xs text-[var(--text-muted)]">
+      <div className="min-h-screen flex items-center justify-center text-white">
         Загружаем…
       </div>
     );
@@ -24,7 +24,7 @@ function AppInner() {
     return <ProfileSetupPage />;
   }
 
-  return <MainLayout currentUser={user} onLogout={logout} />;
+  return <MainLayout currentUser={user} />;
 }
 
 export default function App() {
