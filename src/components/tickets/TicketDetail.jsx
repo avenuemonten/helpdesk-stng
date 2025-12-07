@@ -1,4 +1,39 @@
+// src/components/tickets/TicketDetail.jsx
 import React, { useState, useEffect, useRef } from "react";
+
+/**
+ * Приводим ticket.messages к единому виду для чата
+ */
+function mapMessagesFromTicket(ticket) {
+  if (!ticket?.messages || !ticket.messages.length) return null;
+
+  return ticket.messages.map((m, index) => {
+    const authorType = m.authorType || (m.isAgent ? "support" : "user");
+
+    const isAgent =
+      typeof m.isAgent === "boolean"
+        ? m.isAgent
+        : authorType === "support";
+
+    const authorName =
+      m.authorName ||
+      m.author ||
+      (authorType === "user" ? "Пользователь" : "IT Support");
+
+    const role =
+      m.role ||
+      (authorType === "user" ? "Пользователь" : "IT Support");
+
+    return {
+      id: m.id ?? index + 1,
+      author: authorName,
+      role,
+      time: m.time || m.createdAt || "",
+      text: m.text || m.comment || "",
+      isAgent,
+    };
+  });
+}
 
 export default function TicketDetail({
   ticket,
@@ -6,6 +41,8 @@ export default function TicketDetail({
   onChangeStatus,
   onChangePriority,
   onDelete,
+  // кто сейчас смотрит этот тикет: 'user' | 'support' | 'admin'
+  viewerRole = "support",
 }) {
   if (!ticket) {
     return (
@@ -15,8 +52,8 @@ export default function TicketDetail({
     );
   }
 
-  /* ==== DEMO СООБЩЕНИЯ (потом заменим данными с backend) ==== */
-  const initialMessages = [
+  /* ==== DEMO сообщения (если нет данных из тикета) ==== */
+  const demoMessages = [
     {
       id: 1,
       author: "Иван Петров",
@@ -43,8 +80,17 @@ export default function TicketDetail({
     },
   ];
 
-  const [messages, setMessages] = useState(initialMessages);
+  const mappedFromTicket = mapMessagesFromTicket(ticket);
+  const [messages, setMessages] = useState(
+    mappedFromTicket || demoMessages
+  );
   const bottomRef = useRef(null);
+
+  // при смене тикета подтягиваем его сообщения
+  useEffect(() => {
+    const mapped = mapMessagesFromTicket(ticket);
+    setMessages(mapped || demoMessages);
+  }, [ticket]);
 
   /* Автоскролл вниз */
   useEffect(() => {
@@ -52,7 +98,8 @@ export default function TicketDetail({
   }, [messages]);
 
   const handleCloseTicket = () => {
-    onChangeStatus?.(ticket.id, "closed");
+    if (!onChangeStatus) return;
+    onChangeStatus(ticket.id, "closed");
   };
 
   const handleDelete = () => {
@@ -61,6 +108,9 @@ export default function TicketDetail({
       onDelete(ticket.id);
     }
   };
+
+  // support/admin пишут как "агент", user — как "пользователь"
+  const isAgentSide = viewerRole === "support" || viewerRole === "admin";
 
   const handleSendMessage = (text) => {
     const trimmed = text.trim();
@@ -76,11 +126,11 @@ export default function TicketDetail({
       ...prev,
       {
         id: Date.now(),
-        author: "Заболоцкий Д. С.",
-        role: "IT Support",
+        author: isAgentSide ? "Заболоцкий Д. С." : "Пользователь",
+        role: isAgentSide ? "IT Support" : "Пользователь",
         time,
         text: trimmed,
-        isAgent: true,
+        isAgent: isAgentSide,
       },
     ]);
   };
@@ -154,12 +204,15 @@ export default function TicketDetail({
 
         <div className="flex-1 bg-[var(--bg)] rounded-2xl border border-[var(--border-subtle)] flex flex-col overflow-hidden min-h-0">
           <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 chat-scroll">
-            {messages.map((msg) => (
-              <ChatMessage key={msg.id} message={msg} />
-            ))}
-            <div ref={bottomRef} />
-          </div>
-
+  {messages.map((msg) => (
+    <ChatMessage
+      key={msg.id}
+      message={msg}
+      viewerRole={viewerRole}
+    />
+  ))}
+  <div ref={bottomRef} />
+</div>
           <ChatComposer onSend={handleSendMessage} />
         </div>
       </div>
@@ -180,16 +233,22 @@ export default function TicketDetail({
 }
 
 /* ==== Сообщение ==== */
-function ChatMessage({ message }) {
+function ChatMessage({ message, viewerRole = "support" }) {
   const { author, role, time, text, isAgent } = message;
 
-  if (!isAgent) {
+  const isUserView = viewerRole === "user";
+  // кто “я” в этом режиме
+  const isMine = isUserView ? !isAgent : isAgent;
+
+  // сообщение собеседника (слева)
+  if (!isMine) {
     return (
       <div className="flex items-start gap-3 max-w-[70%]">
         <Avatar name={author} accent="user" />
         <div className="flex flex-col gap-1">
           <div className="text-[10px] text-[var(--text-muted)]">
-            <span className="font-semibold">{author}</span> • {role} • {time}
+            <span className="font-semibold">{author}</span> • {role} •{" "}
+            {time}
           </div>
           <div className="bg-white rounded-2xl px-3 py-2 text-xs leading-relaxed shadow-soft">
             {text}
@@ -199,11 +258,13 @@ function ChatMessage({ message }) {
     );
   }
 
+  // мои сообщения (справа)
   return (
     <div className="flex items-start gap-3 justify-end max-w-[70%] ml-auto">
       <div className="flex flex-col gap-1 items-end">
         <div className="text-[10px] text-[var(--text-muted)] text-right">
-          <span className="font-semibold">{author}</span> • {role} • {time}
+          <span className="font-semibold">{author}</span> • {role} •{" "}
+          {time}
         </div>
         <div className="bg-slate-900 text-white rounded-2xl px-3 py-2 text-xs leading-relaxed shadow-soft max-w-full">
           {text}

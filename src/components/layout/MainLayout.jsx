@@ -1,5 +1,7 @@
 // src/components/layout/MainLayout.jsx
 import { useState } from "react";
+import { useAuth } from "../../context/AuthContext.jsx";
+
 import Sidebar from "./Sidebar.jsx";
 import TicketList from "../tickets/TicketList.jsx";
 import TicketDetail from "../tickets/TicketDetail.jsx";
@@ -10,21 +12,24 @@ import Dashboard from "../dashboard/Dashboard.jsx";
 import ProfilePage from "../profile/ProfilePage.jsx";
 
 export default function MainLayout({ currentUser, onLogout }) {
-  // --- Роль берем из currentUser ---
+  // --- Роль берём из currentUser ---
   let role = "user";
   const rawRole = (currentUser?.role || "").toLowerCase();
 
   if (rawRole.includes("admin")) {
-      role = "admin";
-    } else if (rawRole.includes("support") || rawRole.includes("поддерж")) {
-      role = "support";
-    } else {
-      role = "user";
+    role = "admin";
+  } else if (rawRole.includes("support") || rawRole.includes("поддерж")) {
+    role = "support";
+  } else {
+    role = "user";
   }
-    const isAdmin = role === "admin";
-    const isSupport = role === "support";
-    const isUser = role === "user";
-    
+
+  const isAdmin = role === "admin";
+  const isSupport = role === "support";
+  const isUser = role === "user";
+
+  const { user } = useAuth();
+
   const [tickets, setTickets] = useState([
     {
       id: 1,
@@ -62,7 +67,7 @@ export default function MainLayout({ currentUser, onLogout }) {
     {
       id: 3,
       name: "Рабочее место",
-      description: "ПК, принтеры, офисные приложения, рабочее место"
+      description: "ПК, принтеры, офисные приложения, рабочее место",
     },
   ]);
 
@@ -86,15 +91,41 @@ export default function MainLayout({ currentUser, onLogout }) {
       ? Math.max(...tickets.map((t) => t.id)) + 1
       : 1;
 
+    const authorName =
+      user?.fullname ||
+      user?.username ||
+      currentUser?.full_name ||
+      "Пользователь";
+
+    const now = new Date();
+    const time = now.toLocaleTimeString("ru-RU", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
     const newTicket = {
       id: nextId,
       title: data.title,
       department: data.category,
       status: "open",
-      priority: data.priority,
-      description: data.description,
+      priority: data.priority, // low | medium | high
+      description: data.comment || "",
       computerName: data.computerName,
       createdAt: "Только что",
+
+      // первое сообщение в чате
+      messages: data.comment
+        ? [
+            {
+              id: 1,
+              author: authorName,
+              role: "Пользователь",
+              time,
+              text: data.comment,
+              isAgent: false,
+            },
+          ]
+        : [],
     };
 
     setTickets((prev) => [newTicket, ...prev]);
@@ -185,7 +216,7 @@ export default function MainLayout({ currentUser, onLogout }) {
                 <p className="text-sm text-[var(--text-muted)]">
                   {isUser
                     ? "Список созданных вами обращений"
-                    : "Обращение пользователей"}
+                    : "Обращения пользователей"}
                 </p>
               </>
             )}
@@ -250,7 +281,6 @@ export default function MainLayout({ currentUser, onLogout }) {
           {activeSection === "tickets" && (
             <>
               {selectedTicket ? (
-                // когда тикет выбран — два столбца
                 <>
                   <div className="w-[40%] min-w-[320px] max-w-md h-full min-h-0">
                     <TicketList
@@ -272,18 +302,14 @@ export default function MainLayout({ currentUser, onLogout }) {
                     <TicketDetail
                       ticket={selectedTicket}
                       onClose={() => setSelectedTicketId(null)}
-                      onChangeStatus={
-                        isUser ? null : handleChangeTicketStatus
-                      }
-                      onChangePriority={
-                        isUser ? null : handleChangeTicketPriority
-                      }
+                      onChangeStatus={isUser ? null : handleChangeTicketStatus}
+                      onChangePriority={isUser ? null : handleChangeTicketPriority}
                       onDelete={isAdmin ? handleDeleteTicket : null}
+                      viewerRole={role}
                     />
                   </div>
                 </>
               ) : (
-                // когда тикет НЕ выбран — только список, на всю ширину
                 <div className="flex-1 h-full min-h-0">
                   <TicketList
                     tickets={tickets}
