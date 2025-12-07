@@ -1,70 +1,63 @@
+// backend/routes/auth.js
 import express from "express";
-import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { getConnection } from "../db.js";
 
 const router = express.Router();
 
+// POST /api/auth/login
 router.post("/login", async (req, res) => {
-  const { username, password, subdivision } = req.body || {};
+  const { username, password } = req.body || {};
 
-  if (!username || !password || !subdivision) {
-    return res.status(400).json({ error: "Укажи логин, пароль и подразделение" });
+  if (!username || !password) {
+    return res.status(400).json({ error: "Username and password required" });
   }
 
   let conn;
   try {
     conn = await getConnection();
 
-    const rows = await conn.query("SELECT * FROM users WHERE username = ? LIMIT 1", [username]);
-    let user = rows[0];
+    // Берём пользователя по username
+    const rows = await conn.query(
+      `SELECT id, username, full_name, department, computer_name, role, password_hash
+       FROM users
+       WHERE username = ?
+       LIMIT 1`,
+      [username]
+    );
 
+    const user = rows[0];
     if (!user) {
-      const passwordHash = await bcrypt.hash(password, 10);
-
-      const count = await conn.query("SELECT COUNT(*) AS c FROM users");
-      const role = count[0].c === 0 ? "admin" : "user";
-
-      const insertRes = await conn.query(
-        `INSERT INTO users (username, full_name, department, computer_name, role, password_hash)
-         VALUES (?, '', ?, '', ?, ?)`,
-        [username, subdivision, role, passwordHash]
-      );
-
-      const newRows = await conn.query("SELECT * FROM users WHERE id = ?", [insertRes.insertId]);
-      user = newRows[0];
-    } else {
-      const ok = await bcrypt.compare(password, user.password_hash);
-      if (!ok) return res.status(401).json({ error: "Неверный пароль" });
+      return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    const token = jwt.sign(
-      {
-        id: user.id,
-        username: user.username,
-        role: user.role,
-        department: user.department,
-        computerName: user.computer_name,
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: "12h" }
-    );
+    // ВРЕМЕННО: сравнение в лоб, без bcrypt
+    // (у тебя в БД лежит admin123 / support123 / user123 в password_hash)
+    if (user.password_hash !== password) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+
+    // Готовим payload для фронта
+    const payload = {
+      id: user.id,
+      username: user.username,
+      fullname: user.full_name,
+      department: user.department,
+      computerName: user.computer_name,
+      role: user.role,
+    };
+
+    const token = jwt.sign(payload, process.env.JWT_SECRET, {
+      expiresIn: "8h",
+    });
 
     return res.json({
       token,
-      user: {
-        id: user.id,
-        username: user.username,
-        fullName: user.full_name,
-        department: user.department,
-        computerName: user.computer_name,
-        role: user.role,
-        createdAt: user.created_at,
-      },
+      user: payload,
     });
   } catch (err) {
     console.error("Login error:", err);
-    return res.status(500).json({ error: "Ошибка сервера" });
+    return res.status(500).json({ error: "Server error" });
   } finally {
     if (conn) conn.release();
   }
